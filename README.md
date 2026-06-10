@@ -2,8 +2,7 @@
 
 Projeto da disciplina **Administração de Sistemas Abertos** — IFPB Campus João Pessoa.
 
-**Integrantes:** Haniel e Kauê  
-**Período:** 2026.1
+**Integrantes:** Haniel e Kauê 
 
 ---
 
