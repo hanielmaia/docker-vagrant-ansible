@@ -1,0 +1,126 @@
+---
+- name: Provisionamento da VM
+  hosts: all
+  become: true
+
+  tasks:
+
+    - name: Atualizar lista de pacotes
+      apt:
+        update_cache: yes
+
+    - name: Atualizar todos os pacotes do sistema
+      apt:
+        upgrade: dist
+        force_apt_get: yes
+
+    - name: Instalar dependencias do Docker
+      apt:
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+
+    - name: Criar diretorio para chave GPG do Docker
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Adicionar chave GPG oficial do Docker
+      shell: |
+        curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+      args:
+        creates: /etc/apt/keyrings/docker.gpg
+
+    - name: Adicionar repositorio do Docker
+      shell: |
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    - name: Atualizar lista de pacotes apos adicionar repositorio Docker
+      apt:
+        update_cache: yes
+
+    - name: Instalar Docker Engine
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+        state: present
+
+    - name: Instalar Docker Compose v5 (plugin)
+      apt:
+        name: docker-compose-plugin
+        state: present
+
+    - name: Garantir que o servico Docker esta ativo
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Criar diretorio da aplicacao
+      file:
+        path: /opt/wordpress
+        state: directory
+        mode: '0755'
+
+    - name: Copiar arquivo docker-compose.yml
+      copy:
+        dest: /opt/wordpress/docker-compose.yml
+        content: |
+          services:
+            webproxy:
+              image: hanielmaia/nginx-proxy:latest
+              container_name: webproxy
+              ports:
+                - "8080:8080"
+              networks:
+                - wordpress
+              depends_on:
+                - webserver
+
+            webserver:
+              image: wordpress:latest
+              container_name: webserver
+              environment:
+                WORDPRESS_DB_HOST: database:3306
+                WORDPRESS_DB_USER: wpuser
+                WORDPRESS_DB_PASSWORD: wppassword
+                WORDPRESS_DB_NAME: wpdb
+              volumes:
+                - app:/var/www/html
+              networks:
+                - wordpress
+              depends_on:
+                - database
+
+            database:
+              image: mysql:latest
+              container_name: database
+              environment:
+                MYSQL_ROOT_PASSWORD: rootpassword
+                MYSQL_DATABASE: wpdb
+                MYSQL_USER: wpuser
+                MYSQL_PASSWORD: wppassword
+              volumes:
+                - my:/var/lib/mysql
+              networks:
+                - wordpress
+
+          volumes:
+            app:
+            my:
+
+          networks:
+            wordpress:
+              driver: bridge
+
+    - name: Executar docker compose
+      shell: docker compose -f /opt/wordpress/docker-compose.yml up -d
+      args:
+        chdir: /opt/wordpress
