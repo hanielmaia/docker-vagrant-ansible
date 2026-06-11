@@ -1,4 +1,4 @@
-# Projeto 02 - Docker com Vagrant e Ansible
+# Docker com Vagrant e Ansible
 
 Projeto da disciplina **Administração de Sistemas Abertos** — IFPB Campus João Pessoa.
 
