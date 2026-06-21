@@ -124,3 +124,8 @@
       shell: docker compose -f /opt/wordpress/docker-compose.yml up -d
       args:
         chdir: /opt/wordpress
+    - name: Adicionar usuario vagrant ao grupo docker
+      user:
+        name: vagrant
+        groups: docker
+        append: yes
